@@ -11,3 +11,13 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+
+body, html, canvas, #root {
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
+  background-color: dodgerblue;
+}
