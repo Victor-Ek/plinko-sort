@@ -1,11 +1,23 @@
 import "./App.css";
 
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 
 import { Physics, useBox, useSphere, useCylinder } from "@react-three/cannon";
-import { OrbitControls, PerspectiveCamera, Html } from "@react-three/drei";
-
+import {
+  OrbitControls,
+  PerspectiveCamera,
+  Html,
+  Stars,
+  Sky,
+  Cloud,
+  Sphere as DreiSphere,
+  useTexture,
+  Sparkles,
+  Plane,
+} from "@react-three/drei";
+import Moon from "./moon-texture.jpeg";
+import Water from "./water.png";
 // add names here that should compete against eachother
 const names = ["Mikl", "Victor", "aioli", "NIls", "MOa", "Alipanter", "Emma"];
 
@@ -94,11 +106,75 @@ const SpawnPlayers = React.memo(({ players }) => {
   ));
 });
 
+const Stage = ({ stage, sunRef }) => {
+  const moon = useTexture(Moon);
+  const water = useTexture(Water);
+  switch (stage) {
+    case "Boston":
+      return (
+        <>
+          <Sky sunPosition={[0, 100, 100]} />
+          <Cloud
+            opacity={0.5}
+            speed={1}
+            width={500}
+            depth={1.5}
+            segments={200}
+            position={[0, 200, 0]}
+          />
+        </>
+      );
+    case "Lunaris":
+      return (
+        <>
+          <Stars fade factor={4} radius={200} />
+          <DreiSphere position={[-500, 300, -400]} args={[500, 64, 64]}>
+            <meshStandardMaterial map={moon} />
+          </DreiSphere>
+        </>
+      );
+    case "A world under the sea":
+      return (
+        <>
+          {/* <Stars fade factor={4} radius={200} /> */}
+          <Plane
+            args={[1000, 1000]}
+            position={[0, 200, 0]}
+            rotation={[Math.PI / 2, 0, 0]}
+          >
+            <meshStandardMaterial map={water} />
+          </Plane>
+          <Sparkles count={500} scale={200} size={40} speed={10} noise={200} />
+        </>
+      );
+    case "Infernalis":
+      return (
+        <>
+          <Stars fade factor={4} radius={200} />
+        </>
+      );
+    case "Bathroom":
+      return (
+        <>
+          <Stars fade factor={4} radius={200} />
+        </>
+      );
+    default:
+      return (
+        <>
+          <Stars fade factor={4} radius={200} />
+        </>
+      );
+  }
+};
+
 function App() {
   const [winner, setWinner] = useState("");
   const [gravity, setGravity] = useState(0);
   const [newPlayer, setNewPlayer] = useState("");
   const [players, setPlayers] = useState([]);
+  const [stage, setStage] = useState("");
+  const ref = useRef();
 
   const handleReset = () => {
     setPlayers((prev) => prev.filter((player) => player !== winner));
@@ -114,15 +190,20 @@ function App() {
       />
       <OrbitControls />
       <ambientLight intensity={0.1} />
-      <directionalLight castShadow position={[2.5, 8, 5]} intensity={1} />
-
+      <directionalLight
+        castShadow
+        position={[2.5, 8, 5]}
+        intensity={1}
+        ref={ref}
+      />
+      <Stage stage={stage} sunRef={ref} />
       <Html>
         <div style={{ backgroundColor: "hotpink" }}>
           <h1>{winner}</h1>
         </div>
       </Html>
 
-      <Html position={[40, 250, 0]}>
+      <Html position={[40, 150, 0]}>
         <input onChange={(e) => setNewPlayer(e.target.value)} type="text" />
         <button
           type="button"
@@ -142,82 +223,96 @@ function App() {
         />
       </Html>
 
-      <Physics gravity={[0, gravity, 0]}>
-        <GeneratePegs />
-        <SpawnPlayers players={players} />
-        <Floor
-          args={[130, 5, 100]}
-          position={[0, -50, 0]}
-          onCollide={(e) =>
-            setWinner((prev) =>
-              prev.includes(e.body.name) ? prev : [...prev, e.body.name]
-            )
-          }
-        />
-        {/* TODO: add invisible walls so that no one cheats! */}
-        {/* Right side walls */}
-        <Wall
-          position={[95, 0, 0]}
-          rotation={[0, 0, Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[95, 40, 0]}
-          rotation={[0, 0, Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[95, 80, 0]}
-          rotation={[0, 0, Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[95, 120, 0]}
-          rotation={[0, 0, Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[95, 160, 0]}
-          rotation={[0, 0, Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[95, 200, 0]}
-          rotation={[0, 0, Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
+      <Html position={[-100, 150, 0]}>
+        <div>
+          <button onClick={() => setStage("Boston")}>Boston</button>
+          <button onClick={() => setStage("A world under the sea")}>
+            A world under the sea
+          </button>
+          <button onClick={() => setStage("Infernalis")}>Infernalis XII</button>
+          <button onClick={() => setStage("Lunaris")}>Lunaris</button>
+          <button onClick={() => setStage("Bathroom")}>In the bathroom</button>
+        </div>
+      </Html>
 
-        {/* Left side walls */}
-        <Wall
-          position={[-95, 0, 0]}
-          rotation={[0, 0, -Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[-95, 40, 0]}
-          rotation={[0, 0, -Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[-95, 80, 0]}
-          rotation={[0, 0, -Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[-95, 120, 0]}
-          rotation={[0, 0, -Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[-95, 160, 0]}
-          rotation={[0, 0, -Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
-        <Wall
-          position={[-95, 200, 0]}
-          rotation={[0, 0, -Math.PI / 6]}
-          args={[80, 4, 60]}
-        />
+      <Physics gravity={[0, gravity, 0]}>
+        <group position={[0, -100, 0]}>
+          <GeneratePegs />
+          <SpawnPlayers players={players} />
+          <Floor
+            args={[130, 5, 100]}
+            position={[0, -50, 0]}
+            onCollide={(e) =>
+              setWinner((prev) =>
+                prev.includes(e.body.name) ? prev : [...prev, e.body.name + " "]
+              )
+            }
+          />
+          {/* TODO: add invisible walls so that no one cheats! */}
+          {/* Right side walls */}
+          <Wall
+            position={[95, 0, 0]}
+            rotation={[0, 0, Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[95, 40, 0]}
+            rotation={[0, 0, Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[95, 80, 0]}
+            rotation={[0, 0, Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[95, 120, 0]}
+            rotation={[0, 0, Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[95, 160, 0]}
+            rotation={[0, 0, Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[95, 200, 0]}
+            rotation={[0, 0, Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+
+          {/* Left side walls */}
+          <Wall
+            position={[-95, 0, 0]}
+            rotation={[0, 0, -Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[-95, 40, 0]}
+            rotation={[0, 0, -Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[-95, 80, 0]}
+            rotation={[0, 0, -Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[-95, 120, 0]}
+            rotation={[0, 0, -Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[-95, 160, 0]}
+            rotation={[0, 0, -Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+          <Wall
+            position={[-95, 200, 0]}
+            rotation={[0, 0, -Math.PI / 6]}
+            args={[80, 4, 60]}
+          />
+        </group>
       </Physics>
     </Canvas>
   );
