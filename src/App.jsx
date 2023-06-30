@@ -1,6 +1,6 @@
 import "./App.css";
 
-import React, { Fragment, useRef, useState } from "react";
+import React, { Fragment, Suspense, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 
 import { Physics, useBox, useSphere, useCylinder } from "@react-three/cannon";
@@ -15,9 +15,23 @@ import {
   useTexture,
   Sparkles,
   Plane,
+  Box,
+  Cylinder,
+  useGLTF,
+  Clone,
+  CameraShake,
+  Sphere,
 } from "@react-three/drei";
 import Moon from "./moon-texture.jpeg";
 import Water from "./water.png";
+import Everest from "./models/everest/mount_everest_and_mountains__tibet__nepal.glb";
+import Toilet from "./models/toilet/toilet.glb";
+import {
+  Bloom,
+  DepthOfField,
+  EffectComposer,
+  GodRays,
+} from "@react-three/postprocessing";
 // add names here that should compete against eachother
 const names = ["Mikl", "Victor", "aioli", "NIls", "MOa", "Alipanter", "Emma"];
 
@@ -43,32 +57,29 @@ function Peg(props) {
   }));
 
   return (
-    <mesh ref={ref} castShadow receiveShadow>
-      <cylinderBufferGeometry {...props} castShadow receiveShadow />
+    <Cylinder {...props} ref={ref} castShadow receiveShadow>
       <meshBasicMaterial />
-    </mesh>
+    </Cylinder>
   );
 }
 
 function Floor(props) {
   const [ref] = useBox(() => ({ ...props }));
   return (
-    <mesh ref={ref} name="floor" receiveShadow>
-      <boxBufferGeometry {...props} castShadow receiveShadow />
+    <Box {...props} ref={ref} name="floor" receiveShadow>
       <meshNormalMaterial />
-    </mesh>
+    </Box>
   );
 }
 
-function Sphere(props) {
+function Marble(props) {
   const [ref] = useSphere(() => ({
     mass: 1,
     position: [20, 35, 0],
     ...props,
   }));
   return (
-    <mesh ref={ref} name={props.name} castShadow receiveShadow>
-      <sphereBufferGeometry {...props}></sphereBufferGeometry>
+    <Sphere {...props} ref={ref} name={props.name}>
       <meshStandardMaterial
         color={
           CSS_COLOR_NAMES[
@@ -76,20 +87,20 @@ function Sphere(props) {
           ]
         }
       />
+
       <Html>
-        <span>{props.name}</span>
+        <span style={{ backgroundColor: "white" }}>{props.name}</span>
       </Html>
-    </mesh>
+    </Sphere>
   );
 }
 
 function Wall(props) {
   const [ref] = useBox(() => ({ ...props }));
   return (
-    <mesh ref={ref} name="floor" castShadow receiveShadow>
-      <boxBufferGeometry {...props} castShadow receiveShadow />
+    <Box {...props} castShadow receiveShadow ref={ref} name="floor">
       <meshNormalMaterial />
-    </mesh>
+    </Box>
   );
 }
 
@@ -98,7 +109,7 @@ const ranomizedNames = shuffle(names);
 const SpawnPlayers = React.memo(({ players }) => {
   const offsetX = players.length * 5;
   return shuffle(players).map((player, i) => (
-    <Sphere
+    <Marble
       name={player}
       args={[2, 32]}
       position={[i * 10 - offsetX, 200, 0]}
@@ -109,6 +120,8 @@ const SpawnPlayers = React.memo(({ players }) => {
 const Stage = ({ stage, sunRef }) => {
   const moon = useTexture(Moon);
   const water = useTexture(Water);
+  const everest = useGLTF(Everest);
+  const toilet = useGLTF(Toilet);
   switch (stage) {
     case "Boston":
       return (
@@ -137,9 +150,21 @@ const Stage = ({ stage, sunRef }) => {
       return (
         <>
           {/* <Stars fade factor={4} radius={200} /> */}
+          <directionalLight
+            castShadow
+            position={[2.5, -200, 5]}
+            intensity={1}
+          />
+          <DepthOfField
+            focusDistance={0.3}
+            focalLength={0.8}
+            bokehScale={1}
+            width={1000}
+            height={1000}
+          />
           <Plane
-            args={[1000, 1000]}
-            position={[0, 200, 0]}
+            args={[5000, 5000]}
+            position={[0, 1000, 0]}
             rotation={[Math.PI / 2, 0, 0]}
           >
             <meshStandardMaterial map={water} />
@@ -156,7 +181,24 @@ const Stage = ({ stage, sunRef }) => {
     case "Bathroom":
       return (
         <>
-          <Stars fade factor={4} radius={200} />
+          <Box args={[1000, 1000, 1000]}>
+            <meshBasicMaterial color="white" side={2} />
+          </Box>
+          <Clone object={toilet.scene} position={[50, -120, 0]} scale={200} />
+        </>
+      );
+    case "Top of the world":
+      return (
+        <>
+          <Sky sunPosition={[0, 100, 100]} />
+          <CameraShake />
+          <Suspense>
+            <Clone
+              object={everest.scene}
+              position={[0, -600, -600]}
+              scale={0.7}
+            />
+          </Suspense>
         </>
       );
     default:
@@ -183,137 +225,151 @@ function App() {
 
   return (
     <Canvas shadows>
-      <PerspectiveCamera
-        makeDefault
-        position={[0, 0, 400]}
-        rotation={[0, 0, 0]}
-      />
-      <OrbitControls />
-      <ambientLight intensity={0.1} />
-      <directionalLight
-        castShadow
-        position={[2.5, 8, 5]}
-        intensity={1}
-        ref={ref}
-      />
-      <Stage stage={stage} sunRef={ref} />
-      <Html>
-        <div style={{ backgroundColor: "hotpink" }}>
-          <h1>{winner}</h1>
-        </div>
-      </Html>
-
-      <Html position={[40, 150, 0]}>
-        <input onChange={(e) => setNewPlayer(e.target.value)} type="text" />
-        <button
-          type="button"
-          onClick={() => setPlayers((prev) => [...prev, newPlayer])}
-        >
-          Add player
-        </button>
-        <button type="button" onClick={handleReset}>
-          Reset
-        </button>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          defaultValue="0"
-          onChange={(e) => setGravity(-e.target.value)}
+      <EffectComposer>
+        <PerspectiveCamera
+          makeDefault
+          position={[0, 0, 400]}
+          rotation={[0, 0, 0]}
+          args={[90, undefined, 0.001, 10000]}
         />
-      </Html>
+        <OrbitControls />
+        <ambientLight intensity={0.1} />
+        <directionalLight
+          castShadow
+          position={[2.5, 8, 5]}
+          intensity={1}
+          // ref={ref}
+        />
+        <Stage stage={stage} sunRef={ref} />
+        <Html>
+          <div style={{ backgroundColor: "hotpink" }}>
+            <h1>{winner}</h1>
+          </div>
+        </Html>
 
-      <Html position={[-100, 150, 0]}>
-        <div>
-          <button onClick={() => setStage("Boston")}>Boston</button>
-          <button onClick={() => setStage("A world under the sea")}>
-            A world under the sea
+        <Html position={[40, 150, 0]}>
+          <input onChange={(e) => setNewPlayer(e.target.value)} type="text" />
+          <button
+            type="button"
+            onClick={() => setPlayers((prev) => [...prev, newPlayer])}
+          >
+            Add player
           </button>
-          <button onClick={() => setStage("Infernalis")}>Infernalis XII</button>
-          <button onClick={() => setStage("Lunaris")}>Lunaris</button>
-          <button onClick={() => setStage("Bathroom")}>In the bathroom</button>
-        </div>
-      </Html>
+          <button type="button" onClick={handleReset}>
+            Reset
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            defaultValue="0"
+            onChange={(e) => {
+              setGravity(-e.target.value);
+            }}
+          />
+        </Html>
 
-      <Physics gravity={[0, gravity, 0]}>
-        <group position={[0, -100, 0]}>
-          <GeneratePegs />
-          <SpawnPlayers players={players} />
-          <Floor
-            args={[130, 5, 100]}
-            position={[0, -50, 0]}
-            onCollide={(e) =>
-              setWinner((prev) =>
-                prev.includes(e.body.name) ? prev : [...prev, e.body.name + " "]
-              )
-            }
-          />
-          {/* TODO: add invisible walls so that no one cheats! */}
-          {/* Right side walls */}
-          <Wall
-            position={[95, 0, 0]}
-            rotation={[0, 0, Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[95, 40, 0]}
-            rotation={[0, 0, Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[95, 80, 0]}
-            rotation={[0, 0, Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[95, 120, 0]}
-            rotation={[0, 0, Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[95, 160, 0]}
-            rotation={[0, 0, Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[95, 200, 0]}
-            rotation={[0, 0, Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
+        <Html position={[-100, 150, 0]}>
+          <div>
+            <button onClick={() => setStage("Boston")}>Boston</button>
+            <button onClick={() => setStage("A world under the sea")}>
+              A world under the sea
+            </button>
+            <button onClick={() => setStage("Infernalis")}>
+              Infernalis XII
+            </button>
+            <button onClick={() => setStage("Lunaris")}>Lunaris</button>
+            <button onClick={() => setStage("Bathroom")}>
+              In the bathroom
+            </button>
+            <button onClick={() => setStage("Top of the world")}>
+              Top of the world
+            </button>
+          </div>
+        </Html>
 
-          {/* Left side walls */}
-          <Wall
-            position={[-95, 0, 0]}
-            rotation={[0, 0, -Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[-95, 40, 0]}
-            rotation={[0, 0, -Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[-95, 80, 0]}
-            rotation={[0, 0, -Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[-95, 120, 0]}
-            rotation={[0, 0, -Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[-95, 160, 0]}
-            rotation={[0, 0, -Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-          <Wall
-            position={[-95, 200, 0]}
-            rotation={[0, 0, -Math.PI / 6]}
-            args={[80, 4, 60]}
-          />
-        </group>
-      </Physics>
+        <Physics gravity={[0, gravity, 0]}>
+          <group position={[0, -100, 0]}>
+            <GeneratePegs />
+            <SpawnPlayers players={players} />
+            <Floor
+              args={[130, 5, 100]}
+              position={[0, -50, 0]}
+              onCollide={(e) =>
+                setWinner((prev) =>
+                  prev.includes(e.body.name)
+                    ? prev
+                    : [...prev, e.body.name + " "]
+                )
+              }
+            />
+            {/* TODO: add invisible walls so that no one cheats! */}
+            {/* Right side walls */}
+            <Wall
+              position={[95, 0, 0]}
+              rotation={[0, 0, Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[95, 40, 0]}
+              rotation={[0, 0, Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[95, 80, 0]}
+              rotation={[0, 0, Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[95, 120, 0]}
+              rotation={[0, 0, Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[95, 160, 0]}
+              rotation={[0, 0, Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[95, 200, 0]}
+              rotation={[0, 0, Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+
+            {/* Left side walls */}
+            <Wall
+              position={[-95, 0, 0]}
+              rotation={[0, 0, -Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[-95, 40, 0]}
+              rotation={[0, 0, -Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[-95, 80, 0]}
+              rotation={[0, 0, -Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[-95, 120, 0]}
+              rotation={[0, 0, -Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[-95, 160, 0]}
+              rotation={[0, 0, -Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+            <Wall
+              position={[-95, 200, 0]}
+              rotation={[0, 0, -Math.PI / 6]}
+              args={[80, 4, 60]}
+            />
+          </group>
+        </Physics>
+      </EffectComposer>
     </Canvas>
   );
 }
